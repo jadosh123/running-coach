@@ -1,0 +1,23 @@
+[project]
+name = "running-coach"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "jadosh123", email = "jadosh2000@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi>=0.141.1",
+    "fitparse>=1.2.0",
+    "garminconnect>=0.3.13",
+    "python-multipart>=0.0.32",
+    "uvicorn[standard]>=0.52.4",
+]
+
+[project.scripts]
+running-coach = "running_coach:main"
+
+[build-system]
+requires = ["uv_build>=0.12.7,<0.13.0"]
+build-backend = "uv_build"
