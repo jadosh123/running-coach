@@ -444,6 +444,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "fitparse" },
     { name = "garminconnect" },
+    { name = "python-dotenv" },
     { name = "python-multipart" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -453,6 +454,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.141.1" },
     { name = "fitparse", specifier = ">=1.2.0" },
     { name = "garminconnect", specifier = ">=0.3.13" },
+    { name = "python-dotenv", specifier = ">=1.2.3" },
     { name = "python-multipart", specifier = ">=0.0.32" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.52.4" },
 ]
