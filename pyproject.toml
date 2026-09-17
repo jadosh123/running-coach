@@ -11,6 +11,7 @@ dependencies = [
     "fastapi>=0.141.1",
     "fitparse>=1.2.0",
     "garminconnect>=0.3.13",
+    "mcp[cli]>=2.2.0",
     "python-dotenv>=1.2.3",
     "python-multipart>=0.0.32",
     "uvicorn[standard]>=0.52.4",
