@@ -2,7 +2,7 @@
 PRAGMA foreign_keys = ON;
 
 -- Activity summary, one row per Garmin activity.
-CREATE TABLE activities (
+CREATE TABLE IF NOT EXISTS activities (
     activity_id INTEGER PRIMARY KEY,
     activity_name TEXT,
     activity_type TEXT NOT NULL,
@@ -24,7 +24,7 @@ CREATE TABLE activities (
 );
 
 -- 1km (or device auto-lap) splits within an activity.
-CREATE TABLE activity_splits (
+CREATE TABLE IF NOT EXISTS activity_splits (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     activity_id INTEGER NOT NULL REFERENCES activities (activity_id) ON DELETE CASCADE,
     lap_index INTEGER NOT NULL,
@@ -49,11 +49,11 @@ CREATE TABLE activity_splits (
     UNIQUE (activity_id, lap_index)
 );
 
-CREATE INDEX idx_activity_splits_activity_id ON activity_splits (activity_id);
+CREATE INDEX IF NOT EXISTS idx_activity_splits_activity_id ON activity_splits (activity_id);
 
 -- Free-form notes/conversation context for the coaching agent,
 -- optionally tied to a specific activity (e.g. "knee felt tight").
-CREATE TABLE notes (
+CREATE TABLE IF NOT EXISTS notes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     activity_id INTEGER REFERENCES activities (activity_id) ON DELETE SET NULL,
     content TEXT NOT NULL,
