@@ -1,22 +1,13 @@
-import os
-import time
 from getpass import getpass
-from datetime import date
 from dotenv import load_dotenv
-from garminconnect import Garmin, GarminConnectTooManyRequestsError
-from running_coach.db import get_connection, get_latest_activity_date, store_activity, store_splits
-
-REQUEST_DELAY_SECONDS = 1
-RATE_LIMIT_BACKOFF_SECONDS = 60
-DEFAULT_START_DATE = "2026-01-01"
+from garminconnect import Garmin, GarminConnectAuthenticationError, GarminConnectTooManyRequestsError, GarminConnectConnectionError
 
 load_dotenv()
 
-# First run: logs in and saves tokens to ~/.garminconnect
-# Subsequent runs: loads saved tokens and auto-refreshes
+
 def login() -> Garmin:
     client = Garmin(
-        os.getenv("GARMIN_EMAIL"),
+        input("Garmin Email: "),
         getpass("Garmin password: "),
         prompt_mfa=lambda: input("MFA code: "),
     )
@@ -24,28 +15,17 @@ def login() -> Garmin:
     return client
 
 
-def fetch_splits(client: Garmin, activity_id: int) -> dict:
-    try:
-        return client.get_activity_splits(activity_id)
-    except GarminConnectTooManyRequestsError:
-        time.sleep(RATE_LIMIT_BACKOFF_SECONDS)
-        return client.get_activity_splits(activity_id)
-
-
 def main():
-    client = login()
-    conn = get_connection()
-
-    start_date = get_latest_activity_date(conn) or DEFAULT_START_DATE
-    activities = client.get_activities_by_date(startdate=start_date, enddate=date.today().isoformat(), activitytype="running")
-
-    for activity in activities:
-        store_activity(conn, activity)
-        splits = fetch_splits(client, activity["activityId"])
-        store_splits(conn, activity["activityId"], splits)
-        conn.commit()
-        time.sleep(REQUEST_DELAY_SECONDS)
-    conn.close()
+    try:
+        login()
+    except GarminConnectAuthenticationError:
+        print("Login failed: check your email, password, and MFA code.")
+    except GarminConnectTooManyRequestsError:
+        print("Garmin is rate limiting login attempts. Wait a while and try again.")
+    except GarminConnectConnectionError:
+        print("Could not reach Garmin. Check your connection and try again.")
+    else:
+        print("Logged in. Tokens saved.")
 
 
 if __name__ == "__main__":
