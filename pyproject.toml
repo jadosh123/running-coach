@@ -20,6 +20,7 @@ dependencies = [
 
 [project.scripts]
 running-coach = "running_coach:main"
+garmin-auth = "running_coach.garmin:main"
 
 [build-system]
 requires = ["uv_build>=0.12.7,<0.13.0"]
