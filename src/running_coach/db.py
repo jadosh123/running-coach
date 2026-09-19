@@ -1,17 +1,29 @@
 import sqlite3
 from typing import Any
+from running_coach.paths import get_data_dir
 from running_coach.utils import get_project_root
 
-DB_PATH = get_project_root() / "data" / "running_coach.db"
 SCHEMA_PATH = get_project_root() / "database" / "init.sql"
 
 
+MIGRATIONS = [
+    lambda conn: conn.executescript(SCHEMA_PATH.read_text()),
+]
+
+
+def migrate(conn: sqlite3.Connection) -> None:
+    version = conn.execute("PRAGMA user_version").fetchone()[0]
+    for target, step in enumerate(MIGRATIONS[version:], start=version + 1):
+        step(conn)
+        conn.execute(f"PRAGMA user_version = {target}")
+        conn.commit()
+
+
 def get_connection() -> sqlite3.Connection:
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(get_data_dir() / "running_coach.db")
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
-    conn.executescript(SCHEMA_PATH.read_text())
+    migrate(conn)
     return conn
 
 
@@ -30,7 +42,7 @@ def get_activities(conn: sqlite3.Connection, limit: int = 10) -> list[dict[str, 
     ]
 
 
-def get_activity_split(conn: sqlite3.Connection, activity_id: int) -> list[dict[str, Any]]:
+def get_activity_splits(conn: sqlite3.Connection, activity_id: int) -> list[dict[str, Any]]:
     return [
         dict(row)
         for row in conn.execute(
@@ -44,8 +56,45 @@ def get_activity_notes(conn: sqlite3.Connection, activity_id: int | None) -> lis
     return [
         dict(row)
         for row in conn.execute(
-            "SELECT * FROM notes WHERE activity_id IS ? ORDER BY created_at",
+            "SELECT * FROM notes WHERE activity_id IS ? ORDER BY created_at, id",
             (activity_id,),
+        ).fetchall()
+    ]
+
+
+def store_note(conn: sqlite3.Connection, content: str, activity_id: int | None = None) -> int:
+    cursor = conn.execute(
+        "INSERT INTO notes (activity_id, content) VALUES (?, ?)",
+        (activity_id, content),
+    )
+    return cursor.lastrowid
+
+
+def update_note(conn: sqlite3.Connection, note_id: int, content: str) -> bool:
+    cursor = conn.execute(
+        "UPDATE notes SET content = ? WHERE id = ?",
+        (content, note_id),
+    )
+    return cursor.rowcount > 0
+
+
+def delete_notes(conn: sqlite3.Connection, note_ids: list[int]) -> int:
+    if not note_ids:
+        return 0
+    placeholders = ", ".join("?" * len(note_ids))
+    cursor = conn.execute(
+        f"DELETE FROM notes WHERE id IN ({placeholders})",
+        note_ids,
+    )
+    return cursor.rowcount
+
+
+def get_recent_notes(conn: sqlite3.Connection, limit: int = 5):
+    return [
+        dict(row)
+        for row in conn.execute(
+            "SELECT * FROM notes ORDER BY created_at DESC, id DESC LIMIT ?",
+            (limit,),
         ).fetchall()
     ]
 
@@ -162,14 +211,6 @@ def store_splits(conn: sqlite3.Connection, activity_id: int, splits: dict) -> No
         )
 
 
-def store_note(conn: sqlite3.Connection, content: str, activity_id: int | None = None) -> int:
-    cursor = conn.execute(
-        "INSERT INTO notes (activity_id, content) VALUES (?, ?)",
-        (activity_id, content),
-    )
-    return cursor.lastrowid
-
-
 if __name__ == "__main__":
     conn = get_connection()
 
@@ -182,7 +223,7 @@ if __name__ == "__main__":
     if activities:
         sample_activity_id = activities[0]["activity_id"]
 
-        splits = get_activity_split(conn, sample_activity_id)
+        splits = get_activity_splits(conn, sample_activity_id)
         print(f"\n{len(splits)} splits for activity {sample_activity_id}:")
         for split in splits:
             print(f"  lap {split['lap_index']}: {split['distance_meters']}m in {split['duration_seconds']}s")
@@ -196,5 +237,23 @@ if __name__ == "__main__":
 
     general_notes = get_activity_notes(conn, None)
     print(f"\nGeneral notes (no activity_id): {general_notes}")
+
+    print("\n--- note insert / update / delete ---")
+    first_id = store_note(conn, "temp note one")
+    second_id = store_note(conn, "temp note two")
+    conn.commit()
+    print(f"Inserted notes {first_id}, {second_id}")
+    print(f"Recent notes (newest first): {[n['content'] for n in get_recent_notes(conn, limit=2)]}")
+
+    print(f"Update existing note: {update_note(conn, first_id, 'temp note one (edited)')}")
+    print(f"Update missing note: {update_note(conn, -1, 'nope')}")
+    conn.commit()
+    print(f"After update: {[n['content'] for n in get_recent_notes(conn, limit=2)]}")
+
+    print(f"Delete both: {delete_notes(conn, [first_id, second_id])} row(s) removed")
+    print(f"Delete empty list: {delete_notes(conn, [])}")
+    conn.commit()
+    remaining = [n["id"] for n in get_recent_notes(conn, limit=50)]
+    print(f"Temp notes gone: {first_id not in remaining and second_id not in remaining}")
 
     conn.close()
