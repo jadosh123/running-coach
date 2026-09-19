@@ -1,8 +1,16 @@
 from getpass import getpass
-from dotenv import load_dotenv
 from garminconnect import Garmin, GarminConnectAuthenticationError, GarminConnectTooManyRequestsError, GarminConnectConnectionError
 
-load_dotenv()
+TOKEN_DIR = "~/.garminconnect"
+
+
+def get_client() -> Garmin:
+    client = Garmin()
+    try:
+        client.login(TOKEN_DIR)
+    except GarminConnectAuthenticationError:
+        raise RuntimeError("Not logged in to Garmin. Run the login command first.")
+    return client
 
 
 def login() -> Garmin:
