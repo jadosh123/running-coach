@@ -1,9 +1,9 @@
 import sqlite3
 from typing import Any
 from running_coach.paths import get_data_dir
-from running_coach.utils import get_project_root
+from importlib import resources
 
-SCHEMA_PATH = get_project_root() / "database" / "init.sql"
+SCHEMA_PATH = resources.files("running_coach.database") / "init.sql"
 
 
 MIGRATIONS = [
