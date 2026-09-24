@@ -11,6 +11,7 @@ MIGRATIONS = [
 ]
 
 
+# Database methods
 def migrate(conn: sqlite3.Connection) -> None:
     version = conn.execute("PRAGMA user_version").fetchone()[0]
     for target, step in enumerate(MIGRATIONS[version:], start=version + 1):
@@ -27,6 +28,7 @@ def get_connection() -> sqlite3.Connection:
     return conn
 
 
+# Activity fetching methods
 def get_latest_activity_date(conn: sqlite3.Connection) -> str | None:
     row = conn.execute("SELECT MAX(start_time_local) FROM activities").fetchone()
     latest = row[0]
@@ -52,6 +54,7 @@ def get_activity_splits(conn: sqlite3.Connection, activity_id: int) -> list[dict
     ]
 
 
+# Note methods
 def get_activity_notes(conn: sqlite3.Connection, activity_id: int | None) -> list[dict[str, Any]]:
     return [
         dict(row)
@@ -99,6 +102,7 @@ def get_recent_notes(conn: sqlite3.Connection, limit: int = 5):
     ]
 
 
+# Data writing
 def store_activity(conn: sqlite3.Connection, activity: dict) -> None:
     conn.execute(
         """

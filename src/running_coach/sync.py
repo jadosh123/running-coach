@@ -17,12 +17,14 @@ def fetch_splits(client: Garmin, activity_id: int) -> dict:
         return client.get_activity_splits(activity_id)
 
 
-def sync_activities() -> int:
+def sync_activities(start_date: str | None = None) -> int:
+    """Sync running activities with local database from garmin."""
     client = get_client()
     conn = get_connection()
 
     try:
-        start_date = get_latest_activity_date(conn) or DEFAULT_START_DATE
+        if not start_date:
+            start_date = get_latest_activity_date(conn) or DEFAULT_START_DATE
         activities = client.get_activities_by_date(
             startdate=start_date,
             enddate=date.today().isoformat(),
