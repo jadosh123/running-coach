@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Activity(BaseModel):
@@ -12,13 +12,13 @@ class Activity(BaseModel):
     moving_duration_seconds: float | None
     elevation_gain_meters: float | None
     elevation_loss_meters: float | None
-    average_speed_mps: float | None
-    max_speed_mps: float | None
+    average_speed_mps: float | None = Field(None, description="Average pace, meters per second")
+    max_speed_mps: float | None = Field(None, description="Max pace, meters per second")
     calories: float | None
     average_hr: float | None
     max_hr: float | None
-    average_cadence: float | None
-    max_cadence: float | None
+    average_cadence: float | None = Field(None, description="Average cadence, steps per minute")
+    max_cadence: float | None = Field(None, description="Max cadence, steps per minute")
     steps: int | None
 
 
@@ -32,14 +32,14 @@ class ActivitySplit(BaseModel):
     moving_duration_seconds: float | None
     elevation_gain_meters: float | None
     elevation_loss_meters: float | None
-    average_speed_mps: float | None
-    max_speed_mps: float | None
+    average_speed_mps: float | None = Field(None, description="Average pace, meters per second")
+    max_speed_mps: float | None = Field(None, description="Max pace, meters per second")
     calories: float | None
     average_hr: float | None
     max_hr: float | None
-    average_cadence: float | None
-    max_cadence: float | None
-    stride_length_cm: float | None
+    average_cadence: float | None = Field(None, description="Average cadence, steps per minute")
+    max_cadence: float | None = Field(None, description="Max cadence, steps per minute")
+    stride_length_cm: float | None = Field(None, description="Average stride length, centimeters")
     start_latitude: float | None
     start_longitude: float | None
     end_latitude: float | None

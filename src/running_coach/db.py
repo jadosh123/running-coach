@@ -2,6 +2,7 @@ import sqlite3
 from typing import Any
 from running_coach.paths import get_data_dir
 from importlib import resources
+from running_coach.models import Activity, ActivitySplit
 
 SCHEMA_PATH = resources.files("running_coach.database") / "init.sql"
 
@@ -239,6 +240,13 @@ if __name__ == "__main__":
         print(f"\n{len(splits)} splits for activity {sample_activity_id}:")
         for split in splits:
             print(f"  lap {split['lap_index']}: {split['distance_meters']}m in {split['duration_seconds']}s")
+
+        activity_model = Activity(**get_activity(conn, sample_activity_id))
+        print(f"\nActivity model JSON schema:\n{activity_model.model_json_schema()}")
+
+        if splits:
+            split_model = ActivitySplit(**splits[0])
+            print(f"\nActivitySplit model JSON schema:\n{split_model.model_json_schema()}")
 
         note_id = store_note(conn, "test note from db.py main block", activity_id=sample_activity_id)
         conn.commit()
