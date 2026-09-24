@@ -35,13 +35,21 @@ def get_latest_activity_date(conn: sqlite3.Connection) -> str | None:
     return latest[:10] if latest else None
 
 
-def get_activities(conn: sqlite3.Connection, limit: int = 10) -> list[dict[str, Any]]:
+def get_recent_activities(conn: sqlite3.Connection, limit: int = 10) -> list[dict[str, Any]]:
     return [
         dict(row) 
         for row in conn.execute(
             "SELECT * FROM activities ORDER BY start_time_local DESC LIMIT ?",
             (limit,)).fetchall()
     ]
+
+
+def get_activity(conn: sqlite3.Connection, activity_id: int) -> dict[str, Any]:
+    res = conn.execute(
+        "SELECT * FROM activities WHERE activity_id = ?",
+        (activity_id,)
+    ).fetchone()
+    return dict(res) if res else None
 
 
 def get_activity_splits(conn: sqlite3.Connection, activity_id: int) -> list[dict[str, Any]]:
@@ -218,7 +226,7 @@ def store_splits(conn: sqlite3.Connection, activity_id: int, splits: dict) -> No
 if __name__ == "__main__":
     conn = get_connection()
 
-    activities = get_activities(conn, limit=3)
+    activities = get_recent_activities(conn, limit=3)
     print(f"Latest activity date: {get_latest_activity_date(conn)}")
     print(f"Last {len(activities)} activities:")
     for activity in activities:
