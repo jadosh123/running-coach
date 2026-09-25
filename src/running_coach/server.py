@@ -1,4 +1,5 @@
 from mcp.server import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 from running_coach import db
 from running_coach.models import Activity, ActivitySplit
 from running_coach import sync
@@ -10,15 +11,12 @@ mcp = MCPServer("Running Coach")
 @mcp.tool()
 def get_recent_activities(limit: int = 5) -> list[Activity]:
     """Fetch most recent N activities with the limit argument."""
-    conn = db.get_connection()
-    try:
-        res = [Activity(**row) for row in db.get_recent_activities(conn, limit)]
-    finally:
-        conn.close()
+    with db.connection() as conn:
+        rows = db.get_recent_activities(conn, limit)
 
-    if not res:
-        raise ValueError("No activities in the database yet. Run the sync tool first to populate it.")
-    return res
+    if not rows:
+        raise ToolError("No activities in the database yet. Run the sync tool first to populate it.")
+    return [Activity(**row) for row in rows]
 
 
 @mcp.tool()
@@ -31,32 +29,63 @@ def sync_activities(start_date: str | None = None) -> int:
 
 
 @mcp.tool()
-def get_activity(activity_id: int) -> dict[str, Any]:
-    conn = db.get_connection()
-    try:
+def get_activity(activity_id: int) -> Activity:
+    """Fetch activity by ID."""
+    with db.connection() as conn:
         res = db.get_activity(conn, activity_id)
-    finally:
-        conn.close()
 
     if not res:
-        raise ValueError(f"No activity found for activity_id={activity_id}.")
+        raise ToolError(f"No activity found for activity_id={activity_id}. Use get_recent_activities to find valid IDs.")
     return Activity(**res)
 
 
 @mcp.tool()
 def get_activity_splits(activity_id: int) -> list[ActivitySplit]:
-    """Fetch activity splits by activity ID."""
-    conn = db.get_connection()
-    try:
-        res = [ActivitySplit(**row) for row in db.get_activity_splits(conn, activity_id)]
-    finally:
-        conn.close()
+    """Fetch per-lap splits (usually 1 km auto-laps) for an activity:
+    pace, HR, cadence, stride length and elevation per lap."""
+    with db.connection() as conn:
+        res = db.get_activity_splits(conn, activity_id)
 
     if not res:
-        raise ValueError(f"No splits were found for activity_id={activity_id}. Verify the ID via get_activities, or this activity may not have lap data.")
-    return res
+        raise ToolError(f"No splits were found for activity_id={activity_id}. Verify the ID via get_recent_activities, or this activity may not have lap data.")
+    return [ActivitySplit(**row) for row in res]
 
-# @mcp.resource("greeting://{name}")
-# def greeting(name: str) -> str:
-#     """Greet someone by name."""
-#     return f"Hello, {name}!"
+
+@mcp.tool()
+def get_activity_notes(activity_id: int | None) -> list[dict[str, Any]]:
+    """Fetch notes for activity_id, oldest first. If activity_id is omitted,
+    fetches general notes not attached to any activity. Returns [] if none."""
+    with db.connection() as conn:
+        return db.get_activity_notes(conn, activity_id)
+
+
+@mcp.tool()
+def write_note(note: str, activity_id: int | None = None) -> int:
+    """Save a coaching note. Attach it to a run with activity_id, or omit it
+    for a general note (e.g. a standing goal). Returns the new note's id."""
+    with db.connection() as conn:
+        if activity_id is not None and db.get_activity(conn, activity_id) is None:
+            raise ToolError(f"No activity found for activity_id={activity_id}. Use get_recent_activities to find valid IDs.")
+        return db.store_note(conn, note, activity_id)
+
+
+@mcp.tool()
+def delete_note(note_ids: list[int]) -> int:
+    """Permanently delete notes by id (get ids from get_activity_notes).
+    Returns how many were deleted; fewer than requested means some ids didn't exist.
+    Confirm with the user before deleting notes they wrote."""
+    with db.connection() as conn:
+        return db.delete_notes(conn, note_ids)
+
+
+@mcp.tool()
+def get_recent_notes(limit: int = 5) -> list[dict[str, Any]]:
+    """Fetch the most recent notes across all activities and general notes,
+    newest first. Use this to recall goals and past observations when you
+    don't know which activity they belong to. Returns [] if none."""
+    with db.connection() as conn:
+        return db.get_recent_notes(conn, limit)
+
+
+if __name__ == "__main__":
+    mcp.run()

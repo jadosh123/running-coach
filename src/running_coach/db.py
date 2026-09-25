@@ -1,8 +1,10 @@
 import sqlite3
 from typing import Any
+from collections.abc import Generator
 from running_coach.paths import get_data_dir
 from importlib import resources
 from running_coach.models import Activity, ActivitySplit
+from contextlib import contextmanager
 
 SCHEMA_PATH = resources.files("running_coach.database") / "init.sql"
 
@@ -29,6 +31,16 @@ def get_connection() -> sqlite3.Connection:
     return conn
 
 
+@contextmanager
+def connection() -> Generator[sqlite3.Connection]:
+    conn = get_connection()
+    try:
+        with conn:
+            yield conn
+    finally:
+        conn.close()
+
+
 # Activity fetching methods
 def get_latest_activity_date(conn: sqlite3.Connection) -> str | None:
     row = conn.execute("SELECT MAX(start_time_local) FROM activities").fetchone()
@@ -45,7 +57,7 @@ def get_recent_activities(conn: sqlite3.Connection, limit: int = 10) -> list[dic
     ]
 
 
-def get_activity(conn: sqlite3.Connection, activity_id: int) -> dict[str, Any]:
+def get_activity(conn: sqlite3.Connection, activity_id: int) -> dict[str, Any] | None:
     res = conn.execute(
         "SELECT * FROM activities WHERE activity_id = ?",
         (activity_id,)
@@ -82,14 +94,6 @@ def store_note(conn: sqlite3.Connection, content: str, activity_id: int | None =
     return cursor.lastrowid
 
 
-def update_note(conn: sqlite3.Connection, note_id: int, content: str) -> bool:
-    cursor = conn.execute(
-        "UPDATE notes SET content = ? WHERE id = ?",
-        (content, note_id),
-    )
-    return cursor.rowcount > 0
-
-
 def delete_notes(conn: sqlite3.Connection, note_ids: list[int]) -> int:
     if not note_ids:
         return 0
@@ -101,7 +105,7 @@ def delete_notes(conn: sqlite3.Connection, note_ids: list[int]) -> int:
     return cursor.rowcount
 
 
-def get_recent_notes(conn: sqlite3.Connection, limit: int = 5):
+def get_recent_notes(conn: sqlite3.Connection, limit: int = 5) -> list[dict[str, Any]]:
     return [
         dict(row)
         for row in conn.execute(
