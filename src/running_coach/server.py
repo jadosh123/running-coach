@@ -44,10 +44,13 @@ def get_activity_splits(activity_id: int) -> list[ActivitySplit]:
     """Fetch per-lap splits (usually 1 km auto-laps) for an activity:
     pace, HR, cadence, stride length and elevation per lap."""
     with db.connection() as conn:
+        activity = db.get_activity(conn, activity_id)
         res = db.get_activity_splits(conn, activity_id)
 
+    if not activity:
+        raise ToolError(f"No activity found for activity_id={activity_id}. Use get_recent_activities to find valid IDs.")
     if not res:
-        raise ToolError(f"No splits were found for activity_id={activity_id}. Verify the ID via get_recent_activities, or this activity may not have lap data.")
+        raise ToolError(f"Activity {activity_id} exists but has no lap data. Use get_activity for its summary instead.")
     return [ActivitySplit(**row) for row in res]
 
 
